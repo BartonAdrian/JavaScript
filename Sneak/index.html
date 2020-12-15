@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sneak</title>
+    <style>
+        body{
+            background: orange;
+            text-align: center;
+        }
+        canvas{
+            border: 10px solid palevioletred;
+        }
+        h1{
+            margin-top: 0;
+            font-size: 4em;
+            font-family: "Avenie Next", Verdana;
+            font-weight: bold;
+        }
+        button{
+            background-color: red;
+            color: white;
+            font-size: 4em;
+        }
+    </style>
+</head>
+<body>
+    <canvas width="600" height="600" ></canvas>
+    <h1>Score: 0</h1>
+    <button onclick="playAgain()">Play Again</button>
+
+    <script>
+        //listeners
+        document.addEventListener('keydown',keyPush);
+
+        //canvas
+        const canvas = document.querySelector('canvas');
+        const title = document.querySelector('h1');
+        const ctx = canvas.getContext("2d");
+
+        //game
+        let gameIsRunning = true;
+
+        const fps =15;
+        let score=0;
+        const tailSize= 30;
+
+        const tileCountX=canvas.width/tailSize;
+        const tileCountY=canvas.height/tailSize;
+
+        //player
+        const snakeSpeed=tailSize;
+        let snakePosX=0;
+        let snakePosY=canvas.height/2;
+
+        let velocityX=1;
+        let velocityY=0;
+
+        let tail = [];
+        let snakeLength=2;
+
+        //food
+        let foodPosX=0;
+        let foodPosY=0;
+
+
+        //game-loop
+        function gameLoop(){
+            if(gameIsRunning){
+                drawStuff();
+                moveStuff();
+                //requestAnimationFrame(gameLoop);
+                setTimeout(gameLoop,1000/fps);
+            }
+        }
+        resetFood();
+        gameLoop();
+
+        //pohyb hrace
+        function moveStuff(){
+            snakePosX+=snakeSpeed*velocityX;
+            snakePosY+=snakeSpeed*velocityY;
+
+            //wall collision
+            if(snakePosX>(canvas.width-tailSize)){
+                snakePosX=0;
+            }
+            if(snakePosX<0){
+                snakePosX=canvas.width;
+            }
+            if(snakePosY>(canvas.height-tailSize)){
+                snakePosY=0;
+            }
+            if(snakePosY<0){
+                snakePosY=canvas.height;
+            }
+
+            //self-collision
+            tail.forEach( snakePart => {
+                if(snakePosX === snakePart.x && snakePosY === snakePart.y){
+                    gameOver();
+                }
+            });
+
+            //tail
+            tail.push({ x:snakePosX,y:snakePosY });
+
+            //remove parts
+            tail = tail.slice(-1 *snakeLength);
+
+            //food collision
+            if(snakePosX == foodPosX && snakePosY==foodPosY){
+                title.textContent="Score: "+ ++score;
+                snakeLength++;
+                resetFood();
+            }
+        }
+
+        function drawStuff(){
+            //background
+            rectangle("orange",0,0,canvas.width,canvas.height);
+
+            //grid
+            drawGrid();
+
+            //food
+            rectangle("#00bfff",foodPosX,foodPosY,tailSize,tailSize);
+
+            //tail
+            tail.forEach((snakePart) =>
+                rectangle('#000',snakePart.x,snakePart.y,tailSize,tailSize)
+            );
+
+            //snake
+            rectangle("#000",snakePosX,snakePosY,tailSize,tailSize);
+        }
+
+        function drawGrid(){
+            for(let i=0;i<tileCountX;i++){
+                for(let j=0;j<tileCountY;j++){
+                    rectangle('#fff',tailSize*i,tailSize*j,tailSize-1,tailSize-1);
+                }
+            }
+        }
+
+        function rectangle(color,x,y,width,height){
+            ctx.fillStyle=color;
+            ctx.fillRect(x,y,width,height);
+        }
+
+        function keyPush(){
+            switch(event.key){
+                case 'ArrowLeft': 
+                    if(velocityX!==1){
+                        velocityX=-1; 
+                        velocityY=0;
+                    }
+                break;
+                case 'ArrowUp':
+                    if(velocityY!==1){
+                        velocityX=0; 
+                        velocityY=-1;
+                    }
+                break;
+                case 'ArrowRight':
+                    if(velocityX!==-1){
+                        velocityX=1; 
+                        velocityY=0;
+                    }
+                break;
+                case 'ArrowDown':
+                    if(velocityY!==-1){
+                        velocityX=0; 
+                        velocityY=1;
+                    }
+                break;
+            }
+            
+        }
+        function resetFood(){
+            if( snakeLength === tileCountX * tileCountY){
+                gameOver();
+            }
+
+            foodPosX=Math.floor(Math.random()*tileCountX)*tailSize;
+            foodPosY=Math.floor(Math.random()*tileCountY)*tailSize;
+
+            if(foodPosX === snakePosX && foodPosY===snakePosY){
+                resetFood();
+            }
+
+            if(tail.some(snakePart => snakePart.x === foodPosX && snakePart.y===foodPosY)){
+                resetFood();
+            }
+        }
+
+        function playAgain(){
+            if(!gameIsRunning){
+                location.reload();
+            }
+        }
+
+        function gameOver(){
+            title.textContent="GAME OVER, your score: "+ ++score;
+            gameIsRunning=false;
+        }
+    </script>
+</body>
+</html>
