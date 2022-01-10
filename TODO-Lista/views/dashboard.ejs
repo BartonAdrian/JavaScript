@@ -1,0 +1,281 @@
+<%- include('header') -%>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" integrity="sha512-Fo3rlrZj/k7ujTnHg4CGR2D7kSs0v4LLanw2qksYuRlEzO+tcaEPQogQ0KaoGN26/zrn20ImR1DfuLWnOo7aBA==" crossorigin="anonymous" referrerpolicy="no-referrer"
+    />
+    <nav class="navbar navbar-expand navbar-dark bg-primary shadow">
+        <div class="container">
+            <div class="collapse navbar-collapse" id="navbarNavAltMarkup">
+                <div class="navbar-nav me-auto">
+                    <h3 class="text-light">TODO es posible</h3>
+                </div>
+                <div class="d-flex">
+                    <h5 class="text-light mx-5">
+                        <%= locals.user ? user: "User" %>
+                    </h5>
+                    <a href="/route/logout" class="text-light">Logout</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <router-outlet></router-outlet>
+
+    <div class="bg-warning ">
+        <div class="navBar bg-light vh-100 width-sideBar">
+            <ul class="nav nav-pills nav-flush flex-column mb-auto text-center">
+                <li class="nav-item">
+                    <button href="#" class="nav-link active py-3 border-bottom"> <i class="fa fa-home"></i> <small>Home</small> </button>
+                </li>
+                <li>
+                    <a href="/route/dashboard" class="nav-link py-3 border-bottom" data-bs-toggle="modal" data-bs-target="#myModal"> <i class="add-task fa fa-plus-square"></i> <small>Add</small> </a>
+                    <div class="modal" id="myModal">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Add new task</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <form action="/route/add" method="get" id="add-task-form">
+                                        <input type="text" name="text" id="new-task-input" class="w-100" placeholder="What do you have planned ?"><br>
+                                        <button type="submit" style="margin-top: 10px;" class="btn-primary" id="new-task-submit" value="Add task">Add task</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+                <li class="nav-item">
+                    <a href="/route/json" id="json-btn" class="nav-link py-3 border-bottom"> <i class="fa fa-file-code"></i> <small>JSON</small> </a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="content text-primary width-sideContent">
+            <section class="task-list">
+                <h2 class="h2"><i class="fa fa-list-alt"></i> Task Lists</h2>
+                <select name="filter" id="filter" class="btn-primary" id="filter">
+                <option value="All" selected>All</option>
+                <option value="Completed">Only completed</option>
+                <option value="Uncompleted">Only uncompleted</option>
+                </select>
+                <div id="tasks">
+                    <input class="card-hidden" id="tasks-list" value="<%= locals.tasks %>">
+                    <div class="list">
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js" integrity="sha384-ygbV9kiqUc6oa4msXn9868pTtWMgiQaeYH7/t7LECLbyPA2x65Kgf80OJFdroafW" crossorigin="anonymous"></script>
+    <script>
+        window.addEventListener('load', () => {
+            const button = document.querySelector("#new-task-submit");
+            const input = document.querySelector("#new-task-input");
+            const list = document.querySelector('#tasks-list');
+            const jsonBtn = document.querySelector('#json-btn')
+
+            var cards = list.value.split("}")
+            cards.forEach(card => {
+                card = card.replaceAll('{', '').replaceAll('(', '').replaceAll(')', '').replaceAll(',', '').replaceAll('new', '').replaceAll('ObjectId', '').replaceAll('"', '').replaceAll("'", '')
+                var heading = card.substring(card.indexOf("heading:") + 8, card.indexOf("state:"))
+                var state = "completed";
+                if (card.includes("uncompleted"))
+                    state = "uncompleted";
+                var date = card.split(" ")[card.split(" ").length - 4];
+                var cardid = card.split(" ")[4];
+                console.log(date);
+                if (heading)
+                    makeCard(heading, date, state, cardid)
+            })
+
+            var user_id
+
+            document.getElementById('filter').addEventListener('change', function() {
+                //console.log('You selected: ', this.value);
+                if (this.value == "All") {
+                    listAll();
+                } else if (this.value == "Completed") {
+                    listCompleted();
+                } else if (this.value == "Uncompleted") {
+                    listUncompleted();
+                }
+            });
+
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                const task = input.value;
+                if (!task) {
+                    alert("Plese fill out the task");
+                    return;
+                }
+                makeCard(task);
+                listAll();
+                document.getElementById('add-task-form').submit();
+                input.value = "";
+            });
+        });
+
+        function makeCard(name, date = "none", state = "uncompleted", cardID = 0) {
+            const list_el = document.querySelector("#tasks");
+            task = name;
+            //Card
+            const card = document.createElement("div");
+            card.id = state;
+            card.classList.add("card", "card-height", "p-2", "m-2", "bg-light", "shadow");
+            //Heading
+            const heading = document.createElement("input");
+            heading.classList.add("w-75", "task-name", "bg-transparent", "h3");
+            heading.type = "text";
+            heading.title = task;
+            heading.value = task;
+            heading.setAttribute("readonly", "readonly");
+            card.appendChild(heading);
+            const heading_icon = document.createElement("i");
+            //Heading icon
+            heading_icon.classList.add("task-state", "fa", "text-danger", "fa-3x", "fa-times-circle");
+            card.appendChild(heading_icon);
+            //Actions
+            const actions = document.createElement("ul");
+            actions.classList.add("border-top-0", "list-group", "list-group-horizontal");
+            const action_edit_btn = document.createElement("button");
+            const action_done_btn = document.createElement("button");
+            const action_delete_btn = document.createElement("button");
+            //Action done
+            const action_done = document.createElement("li");
+            action_done.classList.add("btnList", "bg-transparent", "list-group-item")
+            action_done_btn.classList.add("btnForm", "bg-transparent");
+            action_done_btn.title = "Done button";
+            const action_done_link = document.createElement("a");
+            action_done_link.setAttribute("href", "/route/" + cardID + "/done")
+
+            const action_done_icon = document.createElement("i");
+            action_done_icon.classList.add("fa", "fa-heart", "text-muted", "fa-2x", "fa-check-square", "btnIcon")
+            action_done_link.appendChild(action_done_icon);
+            action_done_btn.appendChild(action_done_link);
+            action_done.appendChild(action_done_btn);
+            actions.appendChild(action_done);
+            //Action edit
+            const action_edit = document.createElement("li");
+            action_edit.classList.add("btnList", "bg-transparent", "list-group-item")
+            action_edit_btn.classList.add("btnForm", "bg-transparent");
+            action_edit_btn.title = "Edit button"
+
+            const action_edit_form = document.createElement("form");
+            action_edit_form.classList.add("form-delete");
+            const action_edit_link_btn = document.createElement("a");
+
+            const action_edit_icon = document.createElement("i");
+            action_edit_icon.classList.add("fa", "fa-heart", "text-muted", "fa-2x", "fa-pen-square", "btnIcon")
+            action_edit_link_btn.appendChild(action_edit_icon);
+            action_edit_form.appendChild(action_edit_link_btn);
+            action_edit_btn.appendChild(action_edit_form);
+            action_edit.appendChild(action_edit_btn);
+            actions.appendChild(action_edit);
+
+            //Action delete
+            const action_delete = document.createElement("li");
+            action_delete.classList.add("btnList", "bg-transparent", "list-group-item")
+            action_delete_btn.classList.add("btnForm", "bg-transparent");
+            action_delete_btn.title = "Delete button";
+
+            const action_delete_form = document.createElement("form");
+            action_delete_form.setAttribute("action", "/route/" + cardID + "?_method=DELETE");
+            action_delete_form.method = "post";
+            const action_delete_link_btn = document.createElement("a");
+
+            const action_delete_icon = document.createElement("i");
+            action_delete_icon.classList.add("fa", "fa-heart", "text-muted", "fa-2x", "fa-minus-square", "btnIcon")
+            action_delete_link_btn.appendChild(action_delete_icon);
+            action_delete_form.appendChild(action_delete_link_btn);
+            action_delete_btn.appendChild(action_delete_form);
+            action_delete.appendChild(action_delete_btn);
+            actions.appendChild(action_delete);
+
+            card.appendChild(actions);
+
+            //Date
+            const Datum = document.createElement("p");
+            Datum.classList.add("h4", "date", "text-muted", "creation-date");
+            if (date == "none") {
+                //------Today Date------
+                var today = new Date();
+                var dd = String(today.getDate()).padStart(2, '0');
+                var mm = String(today.getMonth() + 1).padStart(2, '0');
+                var yyyy = today.getFullYear();
+                date = yyyy + "-" + mm + '-' + dd;
+                //----------------------
+            }
+            var formatedDate = new Date(date);
+
+            var taskHeading = heading.value;
+            Datum.appendChild(document.createTextNode(formatedDate.toUTCString()));
+            card.appendChild(Datum);
+            list_el.appendChild(card);
+            action_edit_btn.addEventListener("click", () => {
+                if (action_edit_icon.classList.contains("fa-pen-square")) {
+                    heading.removeAttribute("readonly");
+                    heading.focus();
+                    action_edit_icon.classList.remove("fa-pen-square");
+                    action_edit_icon.classList.add("fa-file-download");
+                    taskHeading = heading.value;
+                } else {
+                    heading.setAttribute("readonly", "readonly");
+                    action_edit_icon.classList.add("fa-pen-square");
+                    action_edit_icon.classList.remove("fa-file-download");
+                    let text = cardID + "|" + heading.value;
+                    //validace
+                    if (!heading.value.includes("<") && !heading.value.includes(">") && !heading.value.includes("script") && !heading.value.includes("%")) {
+                        action_edit_form.setAttribute("action", "/route/" + text + "/edit");
+                        action_edit_form.method = "get";
+                        action_edit_form.submit();
+                    } else
+                        heading.value = taskHeading;
+                }
+            });
+            action_delete_btn.addEventListener("click", () => {
+                action_delete_form.submit();
+            })
+            if (state != "uncompleted") {
+                heading_icon.classList.remove("text-danger", "fa-times-circle");
+                heading_icon.classList.add("text-success", "fa-check-circle");
+                action_done.removeChild(action_done_btn);
+                action_edit.removeChild(action_edit_btn);
+                card.id = "completed";
+            }
+        }
+
+        function listAll() {
+            document.getElementById('filter').value = "All";
+            const cards = document.getElementsByClassName("card");
+            Array.prototype.forEach.call(cards, card => {
+                if (card.classList.contains("card-hidden"))
+                    card.classList.remove("card-hidden");
+            })
+        }
+
+        function listCompleted() {
+            document.getElementById('filter').value = "Completed";
+            const cards = document.getElementsByClassName("card");
+            Array.prototype.forEach.call(cards, card => {
+                if (card.id == "uncompleted")
+                    card.classList.add("card-hidden");
+                else
+                    card.classList.remove("card-hidden");
+            });
+        }
+
+        function listUncompleted() {
+            document.getElementById('filter').value = "Uncompleted";
+            const cards = document.getElementsByClassName("card");
+            Array.prototype.forEach.call(cards, card => {
+                if (card.id == "completed") {
+                    card.classList.add("card-hidden");
+                } else {
+                    card.classList.remove("card-hidden");
+                }
+            });
+        }
+    </script>
+
+    <%- include('footer') -%>
